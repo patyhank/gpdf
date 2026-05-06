@@ -14,6 +14,13 @@ type FlowLayout struct{}
 // LayoutText breaks the given text into wrapped lines and returns a
 // Result describing the bounds and per-line placed nodes. If the text
 // does not fit vertically, the remaining text is returned as overflow.
+//
+// Style.Padding and Style.Border participate in layout following the CSS
+// box model: lines are wrapped within the inner content area, individual
+// lines are offset by the top/left inset, and the returned Bounds
+// include the full padded/bordered box. Style.Margin is intentionally
+// not consumed here — inter-node spacing is handled by the parent
+// block layout.
 func (fl *FlowLayout) LayoutText(text string, style document.Style, constraints Constraints) Result {
 	if text == "" {
 		return Result{
@@ -33,30 +40,49 @@ func (fl *FlowLayout) LayoutText(text string, style document.Style, constraints 
 
 	lineSpacing := fontSize * lineHeight
 
-	// Resolve text indent for the first line.
-	indent := style.TextIndent.Resolve(constraints.AvailableWidth, fontSize)
+	padding := style.Padding.Resolve(constraints.AvailableWidth, constraints.AvailableHeight, fontSize)
+	borderWidths := resolveBorderWidths(style.Border, constraints.AvailableWidth, fontSize)
+	insetX := padding.Left + borderWidths.Left
+	insetY := padding.Top + borderWidths.Top
+	verticalInset := padding.Vertical() + borderWidths.Vertical()
+
+	inner := constraints
+	inner.AvailableWidth = constraints.AvailableWidth - padding.Horizontal() - borderWidths.Horizontal()
+	inner.AvailableHeight = constraints.AvailableHeight - verticalInset
+	if inner.AvailableWidth < 0 {
+		inner.AvailableWidth = 0
+	}
+	if inner.AvailableHeight < 0 {
+		inner.AvailableHeight = 0
+	}
+
+	// Resolve text indent for the first line, against the inner width.
+	indent := style.TextIndent.Resolve(inner.AvailableWidth, fontSize)
 
 	// Break text into lines, using a narrower first line when indented.
-	lines := breakTextLinesIndented(text, style, fontSize, indent, constraints)
+	lines := breakTextLinesIndented(text, style, fontSize, indent, inner)
 
 	var placed []PlacedNode
 	cursorY := 0.0
 
 	for i, line := range lines {
 		// Check whether this line fits in the remaining vertical space.
-		if cursorY+lineSpacing > constraints.AvailableHeight {
-			return overflowResult(lines[i:], style, constraints.AvailableWidth, cursorY, placed)
+		if cursorY+lineSpacing > inner.AvailableHeight {
+			return overflowResult(lines[i:], style, constraints.AvailableWidth, cursorY+verticalInset, placed)
 		}
 
-		lineWidth := measureLineWidth(line, style, fontSize, constraints)
+		lineWidth := measureLineWidth(line, style, fontSize, inner)
 		lineIndent := 0.0
 		if i == 0 {
 			lineIndent = indent
 		}
-		pn := placeLine(line, lineWidth, style, i == len(lines)-1, constraints.AvailableWidth, lineSpacing, cursorY)
+		pn := placeLine(line, lineWidth, style, i == len(lines)-1, inner.AvailableWidth, lineSpacing, cursorY)
 		if lineIndent != 0 {
 			pn.Position.X += lineIndent
 		}
+		// Shift the line into the padded/bordered content area.
+		pn.Position.X += insetX
+		pn.Position.Y += insetY
 		placed = append(placed, pn)
 		cursorY += lineSpacing
 	}
@@ -64,7 +90,7 @@ func (fl *FlowLayout) LayoutText(text string, style document.Style, constraints 
 	return Result{
 		Bounds: document.Rectangle{
 			Width:  constraints.AvailableWidth,
-			Height: cursorY,
+			Height: cursorY + verticalInset,
 		},
 		Children: placed,
 	}
@@ -128,6 +154,10 @@ func measureLineWidth(line string, style document.Style, fontSize float64, const
 // justification and alignment as needed.
 func placeLine(line string, lineWidth float64, style document.Style, isLastLine bool, availWidth, lineSpacing, cursorY float64) PlacedNode {
 	lineStyle := style
+	// Box-model properties belong to the parent Text node; strip them so
+	// they are not redrawn around every wrapped line.
+	lineStyle.Padding = document.Edges{}
+	lineStyle.Border = document.BorderEdges{}
 
 	// For justified text, distribute extra space between words.
 	// The last line of a paragraph uses left alignment (standard typographic convention).

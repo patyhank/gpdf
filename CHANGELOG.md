@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-05-06
+
+### Added
+- Padding support on Text elements following the CSS box model (#23)
+  - Builder: `template.TextPadding(Edges)`
+  - JSON / GoTemplate schema: `text.style.padding` (uniform, e.g. `"10mm"`) and `text.style.paddings` (CSS shorthand `[top, right, bottom, left]`, 1–4 values)
+  - Layout engine: `Style.Padding` and `Style.Border` participate in text flow — wrap width shrinks to the inner content area, lines are offset by the top/left inset, and `BgColor` fills the padded box (`document/layout/flow.go`)
+- Example tests: `_examples/{builder,json,gotemplate}/36_text_padding_test.go` with shared golden
+
 ## [1.0.7] - 2026-04-29
 
 ### Added
@@ -150,7 +159,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Reed-Solomon coefficient order in QR code encoder
 - binary.Write return value handling for errcheck lint
 
-[Unreleased]: https://github.com/gpdf-dev/gpdf/compare/v1.0.7...HEAD
+[Unreleased]: https://github.com/gpdf-dev/gpdf/compare/v1.0.8...HEAD
+[1.0.8]: https://github.com/gpdf-dev/gpdf/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/gpdf-dev/gpdf/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/gpdf-dev/gpdf/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/gpdf-dev/gpdf/compare/v1.0.4...v1.0.5

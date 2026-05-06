@@ -111,18 +111,25 @@ type SchemaElement struct {
 }
 
 // SchemaStyle defines text styling properties.
+//
+// Padding is the uniform padding inside the text element (e.g. "10mm").
+// Paddings overrides Padding with per-edge values in CSS order
+// [top, right, bottom, left]. The padded area is included in the
+// element's height and is filled by Background when set.
 type SchemaStyle struct {
-	Size          float64 `json:"size,omitempty"`
-	Bold          bool    `json:"bold,omitempty"`
-	Italic        bool    `json:"italic,omitempty"`
-	Align         string  `json:"align,omitempty"`      // "left", "center", "right"
-	Color         string  `json:"color,omitempty"`      // "#RRGGBB" or named
-	Background    string  `json:"background,omitempty"` // "#RRGGBB" or named
-	FontFamily    string  `json:"fontFamily,omitempty"`
-	Underline     bool    `json:"underline,omitempty"`
-	Strikethrough bool    `json:"strikethrough,omitempty"`
-	LetterSpacing float64 `json:"letterSpacing,omitempty"`
-	TextIndent    string  `json:"textIndent,omitempty"` // e.g. "24pt", "10mm"
+	Size          float64  `json:"size,omitempty"`
+	Bold          bool     `json:"bold,omitempty"`
+	Italic        bool     `json:"italic,omitempty"`
+	Align         string   `json:"align,omitempty"`      // "left", "center", "right"
+	Color         string   `json:"color,omitempty"`      // "#RRGGBB" or named
+	Background    string   `json:"background,omitempty"` // "#RRGGBB" or named
+	FontFamily    string   `json:"fontFamily,omitempty"`
+	Underline     bool     `json:"underline,omitempty"`
+	Strikethrough bool     `json:"strikethrough,omitempty"`
+	LetterSpacing float64  `json:"letterSpacing,omitempty"`
+	TextIndent    string   `json:"textIndent,omitempty"` // e.g. "24pt", "10mm"
+	Padding       string   `json:"padding,omitempty"`    // uniform, e.g. "10mm"
+	Paddings      []string `json:"paddings,omitempty"`   // per-edge [top, right, bottom, left]
 }
 
 // SchemaImage defines an image element.
@@ -387,7 +394,58 @@ func applySchemaStyle(ss *SchemaStyle) []TextOption {
 			opts = append(opts, TextIndent(v))
 		}
 	}
+	if e, ok := parseSchemaPadding(ss); ok {
+		opts = append(opts, TextPadding(e))
+	}
 	return opts
+}
+
+// parseSchemaPadding resolves [SchemaStyle.Padding] / [SchemaStyle.Paddings]
+// into [document.Edges]. Paddings, when present, overrides Padding and
+// follows the CSS [top, right, bottom, left] order.
+func parseSchemaPadding(ss *SchemaStyle) (document.Edges, bool) {
+	if len(ss.Paddings) > 0 {
+		edges, err := parseEdgeList(ss.Paddings)
+		if err != nil {
+			return document.Edges{}, false
+		}
+		return edges, true
+	}
+	if ss.Padding != "" {
+		v, err := parseValue(ss.Padding)
+		if err != nil {
+			return document.Edges{}, false
+		}
+		return document.UniformEdges(v), true
+	}
+	return document.Edges{}, false
+}
+
+// parseEdgeList converts a CSS-style 1/2/3/4 element shorthand into
+// per-edge [document.Edges]. The mapping mirrors the CSS padding
+// shorthand: [top right bottom left] for 4 values, [top horizontal bottom]
+// for 3, [vertical horizontal] for 2, and [all] for 1.
+func parseEdgeList(values []string) (document.Edges, error) {
+	parsed := make([]document.Value, len(values))
+	for i, s := range values {
+		v, err := parseValue(s)
+		if err != nil {
+			return document.Edges{}, fmt.Errorf("edge %d: %w", i, err)
+		}
+		parsed[i] = v
+	}
+	switch len(parsed) {
+	case 1:
+		return document.UniformEdges(parsed[0]), nil
+	case 2:
+		return document.Edges{Top: parsed[0], Right: parsed[1], Bottom: parsed[0], Left: parsed[1]}, nil
+	case 3:
+		return document.Edges{Top: parsed[0], Right: parsed[1], Bottom: parsed[2], Left: parsed[1]}, nil
+	case 4:
+		return document.Edges{Top: parsed[0], Right: parsed[1], Bottom: parsed[2], Left: parsed[3]}, nil
+	default:
+		return document.Edges{}, fmt.Errorf("expected 1-4 values, got %d", len(parsed))
+	}
 }
 
 // appendColorOpt parses a color string and appends the resulting option if valid.

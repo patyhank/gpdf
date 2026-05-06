@@ -63,7 +63,7 @@ body:
     id: gpdf-version
     attributes:
       label: gpdf Version
-      placeholder: "v1.0.7"
+      placeholder: "v1.0.8"
     validations:
       required: true
 

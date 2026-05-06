@@ -67,6 +67,13 @@ func TextIndent(v document.Value) TextOption {
 	return func(s *document.Style) { s.TextIndent = v }
 }
 
+// TextPadding sets per-edge padding inside the text element. The padded
+// area is included in the element's height and is filled by [BgColor]
+// when set, matching the CSS box model.
+func TextPadding(e document.Edges) TextOption {
+	return func(s *document.Style) { s.Padding = e }
+}
+
 // Underline adds underline decoration to text.
 func Underline() TextOption {
 	return func(s *document.Style) { s.TextDecoration |= document.DecorationUnderline }

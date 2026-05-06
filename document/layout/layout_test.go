@@ -928,6 +928,122 @@ func TestFlowLayoutTextIndentSingleLine(t *testing.T) {
 	}
 }
 
+func TestFlowLayoutTextPadding(t *testing.T) {
+	fl := &FlowLayout{}
+	style := document.Style{
+		FontSize:   12,
+		LineHeight: 1.2,
+		Padding:    document.UniformEdges(document.Pt(10)),
+	}
+	constraints := Constraints{
+		AvailableWidth:  500,
+		AvailableHeight: 700,
+		FontResolver:    &mockFontResolver{},
+	}
+	result := fl.LayoutText("Hello", style, constraints)
+	if len(result.Children) != 1 {
+		t.Fatalf("Expected 1 line, got %d", len(result.Children))
+	}
+	// Line should be inset by the top/left padding.
+	if !approxEqual(result.Children[0].Position.X, 10, 0.01) {
+		t.Errorf("Line X = %v, want 10", result.Children[0].Position.X)
+	}
+	if !approxEqual(result.Children[0].Position.Y, 10, 0.01) {
+		t.Errorf("Line Y = %v, want 10", result.Children[0].Position.Y)
+	}
+	// Bounds should grow by vertical padding (top + bottom = 20).
+	wantHeight := 12.0*1.2 + 20.0
+	if !approxEqual(result.Bounds.Height, wantHeight, 0.001) {
+		t.Errorf("Height = %v, want %v", result.Bounds.Height, wantHeight)
+	}
+	// Width is unchanged at the outer container size.
+	if !approxEqual(result.Bounds.Width, 500, 0.001) {
+		t.Errorf("Width = %v, want 500", result.Bounds.Width)
+	}
+}
+
+func TestFlowLayoutTextPaddingShrinksWrapWidth(t *testing.T) {
+	fl := &FlowLayout{}
+	// With fontSize=12, mockFontResolver gives 6pt per char. AvailableWidth=60
+	// fits 10 chars; with 10pt padding on each side, inner=40 fits 6 chars,
+	// forcing each 3-char word onto its own line.
+	const text = "abc def ghi jkl mno pqr"
+	constraints := Constraints{
+		AvailableWidth:  60,
+		AvailableHeight: 700,
+		FontResolver:    &mockFontResolver{},
+	}
+
+	plain := fl.LayoutText(text, document.Style{
+		FontSize:   12,
+		LineHeight: 1.2,
+	}, constraints)
+
+	padded := fl.LayoutText(text, document.Style{
+		FontSize:   12,
+		LineHeight: 1.2,
+		Padding:    document.UniformEdges(document.Pt(10)),
+	}, constraints)
+
+	if len(padded.Children) <= len(plain.Children) {
+		t.Errorf("Padded layout should wrap into more lines than plain: padded=%d plain=%d",
+			len(padded.Children), len(plain.Children))
+	}
+}
+
+func TestFlowLayoutTextBorder(t *testing.T) {
+	fl := &FlowLayout{}
+	style := document.Style{
+		FontSize:   12,
+		LineHeight: 1.2,
+		Border:     document.UniformBorder(document.Pt(2), document.BorderSolid, pdf.Color{}),
+	}
+	constraints := Constraints{
+		AvailableWidth:  500,
+		AvailableHeight: 700,
+		FontResolver:    &mockFontResolver{},
+	}
+	result := fl.LayoutText("Hello", style, constraints)
+	if len(result.Children) != 1 {
+		t.Fatalf("Expected 1 line, got %d", len(result.Children))
+	}
+	if !approxEqual(result.Children[0].Position.X, 2, 0.01) {
+		t.Errorf("Line X = %v, want 2", result.Children[0].Position.X)
+	}
+	if !approxEqual(result.Children[0].Position.Y, 2, 0.01) {
+		t.Errorf("Line Y = %v, want 2", result.Children[0].Position.Y)
+	}
+	wantHeight := 12.0*1.2 + 4.0 // vertical border = 2 + 2
+	if !approxEqual(result.Bounds.Height, wantHeight, 0.001) {
+		t.Errorf("Height = %v, want %v", result.Bounds.Height, wantHeight)
+	}
+}
+
+func TestFlowLayoutTextOverflowIncludesPadding(t *testing.T) {
+	fl := &FlowLayout{}
+	lineSpacing := 12.0 * 1.5 // 18
+	style := document.Style{
+		FontSize:   12,
+		LineHeight: 1.5,
+		Padding:    document.UniformEdges(document.Pt(4)),
+	}
+	// Inner height = AvailableHeight - 8. Allow exactly one line to fit.
+	constraints := Constraints{
+		AvailableWidth:  60,
+		AvailableHeight: lineSpacing + 8, // 8 = vertical padding
+		FontResolver:    &mockFontResolver{},
+	}
+	result := fl.LayoutText("Hello world this is a longer text that wraps", style, constraints)
+	if result.Overflow == nil {
+		t.Fatal("Expected overflow with limited height")
+	}
+	// One line placed; bounds height should include vertical padding (8).
+	wantHeight := lineSpacing + 8
+	if !approxEqual(result.Bounds.Height, wantHeight, 0.001) {
+		t.Errorf("Overflow Bounds.Height = %v, want %v", result.Bounds.Height, wantHeight)
+	}
+}
+
 func TestApproximateLineBreak(t *testing.T) {
 	// fontSize=12 => avgCharWidth=6. maxWidth=60 => 10 chars per line.
 	lines := approximateLineBreak("Hello world this is test", 12, 60)

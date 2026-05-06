@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.9] - 2026-05-06
+
+### Fixed
+- AutoRow/Row no longer splits across page boundaries — a row that does not fit in the remaining space on the current page now moves as a whole to the next page, instead of placing the columns that fit on the current page and re-rendering the full row on the next (#24)
+  - `template/grid.go`: `RowBuilder.build()` now sets `BreakInside=BreakAvoid` on the horizontal Box so rows are treated as atomic layout units
+  - `document/layout/block.go`: `layoutVerticalChild` falls back to a normal split when a `BreakAvoid` child is the first node on a fresh page, preventing an infinite loop of empty pages when a row is taller than a full page
+
 ## [1.0.8] - 2026-05-06
 
 ### Added
@@ -159,7 +166,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Reed-Solomon coefficient order in QR code encoder
 - binary.Write return value handling for errcheck lint
 
-[Unreleased]: https://github.com/gpdf-dev/gpdf/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/gpdf-dev/gpdf/compare/v1.0.9...HEAD
+[1.0.9]: https://github.com/gpdf-dev/gpdf/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/gpdf-dev/gpdf/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/gpdf-dev/gpdf/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/gpdf-dev/gpdf/compare/v1.0.5...v1.0.6

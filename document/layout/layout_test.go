@@ -2673,6 +2673,86 @@ func TestBreakInsideAvoidFits(t *testing.T) {
 	}
 }
 
+func TestBreakInsideAvoidFirstChildFallback(t *testing.T) {
+	// Regression for issue #24: when a BreakAvoid child is the first node on
+	// a fresh page and is taller than the available space, it must fall back
+	// to a normal split — otherwise the layout engine loops emitting empty
+	// pages forever. The child should be placed (partial fit) and the
+	// remainder returned as overflow.
+	bl := NewBlockLayout()
+	tooTall := &document.Box{
+		BoxStyle:    document.BoxStyle{Height: document.Pt(50)},
+		BreakPolicy: document.BreakPolicy{BreakInside: document.BreakAvoid},
+		Content: []document.DocumentNode{
+			&document.Text{Content: strings.Repeat("x ", 200), TextStyle: document.DefaultStyle()},
+		},
+	}
+	parent := &document.Box{Content: []document.DocumentNode{tooTall}}
+	constraints := Constraints{
+		AvailableWidth:  100,
+		AvailableHeight: 30,
+		FontResolver:    &mockFontResolver{},
+	}
+	result := bl.Layout(parent, constraints)
+	if result.Overflow == nil {
+		t.Fatal("Expected overflow when BreakAvoid child is taller than the page")
+	}
+	if len(result.Children) != 1 {
+		t.Errorf("Expected the BreakAvoid child to be placed (split fallback), got %d children", len(result.Children))
+	}
+}
+
+func TestRowBreakAvoidKeepsRowTogether(t *testing.T) {
+	// Regression for issue #24: a horizontal row with BreakAvoid whose
+	// columns partially fit must move the entire row to the next page,
+	// instead of placing the columns that fit on the current page.
+	bl := NewBlockLayout()
+
+	// First child fills most of the page.
+	filler := &document.Box{
+		BoxStyle: document.BoxStyle{Height: document.Pt(80)},
+		Content: []document.DocumentNode{
+			&document.Text{Content: "filler", TextStyle: document.DefaultStyle()},
+		},
+	}
+
+	// Row whose right column is too tall to fit in the remaining space.
+	// Without BreakAvoid the row would split; with it, the whole row moves
+	// to the next page.
+	row := &document.Box{
+		BoxStyle:    document.BoxStyle{Direction: document.DirectionHorizontal},
+		BreakPolicy: document.BreakPolicy{BreakInside: document.BreakAvoid},
+		Content: []document.DocumentNode{
+			&document.Box{
+				BoxStyle: document.BoxStyle{Width: document.Pct(50)},
+				Content: []document.DocumentNode{
+					&document.Text{Content: "short", TextStyle: document.DefaultStyle()},
+				},
+			},
+			&document.Box{
+				BoxStyle: document.BoxStyle{Width: document.Pct(50)},
+				Content: []document.DocumentNode{
+					&document.Text{Content: strings.Repeat("y ", 200), TextStyle: document.DefaultStyle()},
+				},
+			},
+		},
+	}
+
+	parent := &document.Box{Content: []document.DocumentNode{filler, row}}
+	constraints := Constraints{
+		AvailableWidth:  200,
+		AvailableHeight: 100,
+		FontResolver:    &mockFontResolver{},
+	}
+	result := bl.Layout(parent, constraints)
+	if result.Overflow == nil {
+		t.Fatal("Expected overflow when row does not fit")
+	}
+	if len(result.Children) != 1 {
+		t.Errorf("Expected only the filler to be placed; got %d children (row should not be split)", len(result.Children))
+	}
+}
+
 func TestBreakAutoDefault(t *testing.T) {
 	// Default BreakPolicy (all BreakAuto) should behave normally.
 	bl := NewBlockLayout()

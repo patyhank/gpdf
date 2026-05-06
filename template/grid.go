@@ -130,10 +130,18 @@ func (r *RowBuilder) Col(span int, fn func(c *ColBuilder)) {
 
 // build converts the row into a Box document node. Each column becomes
 // a child Box with a width proportional to its grid span.
+//
+// Rows are treated as atomic units: BreakInside defaults to BreakAvoid so
+// that a row which does not fit in the remaining vertical space on the
+// current page is moved as a whole to the next page, rather than splitting
+// between its columns.
 func (r *RowBuilder) build(height document.Value, auto bool) document.DocumentNode {
 	box := &document.Box{
 		BoxStyle: document.BoxStyle{
 			Direction: document.DirectionHorizontal,
+		},
+		BreakPolicy: document.BreakPolicy{
+			BreakInside: document.BreakAvoid,
 		},
 	}
 

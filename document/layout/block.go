@@ -181,8 +181,12 @@ func (bl *BlockLayout) layoutVerticalChild(bc *blockContext, child document.Docu
 	childResult := bl.layoutChild(child, childConstraints)
 
 	// BreakInside=BreakAvoid: if the child overflowed, move the
-	// entire child to overflow instead of splitting it.
-	if bp.BreakInside == document.BreakAvoid && childResult.Overflow != nil {
+	// entire child to overflow instead of splitting it. Skip this
+	// guard when the child is the first node on a fresh page (nothing
+	// placed yet) — the child cannot be made to fit by deferring it,
+	// so fall back to the default split to avoid an infinite loop of
+	// empty pages.
+	if bp.BreakInside == document.BreakAvoid && childResult.Overflow != nil && (i > 0 || cursorY > 0 || len(placed) > 0) {
 		return bc.overflowResult(placed, cursorY, children[i:]), true
 	}
 

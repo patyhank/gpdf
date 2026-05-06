@@ -1992,3 +1992,35 @@ func TestTotalPages(t *testing.T) {
 		t.Fatal("generated PDF is empty")
 	}
 }
+
+// TestRowBuildSetsBreakInsideAvoid verifies that rows produced by
+// RowBuilder.build() default to BreakInside=BreakAvoid so they are
+// treated as atomic units by the layout engine. Regression test for
+// issue #24 where a partially fitting AutoRow split between its
+// columns and produced duplicate content across page boundaries.
+func TestRowBuildSetsBreakInsideAvoid(t *testing.T) {
+	rb := &RowBuilder{}
+	rb.Col(12, func(c *ColBuilder) { c.Text("hello") })
+
+	for _, tc := range []struct {
+		name string
+		auto bool
+	}{
+		{"AutoRow", true},
+		{"FixedRow", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			node := rb.build(document.Mm(10), tc.auto)
+			box, ok := node.(*document.Box)
+			if !ok {
+				t.Fatalf("expected *document.Box, got %T", node)
+			}
+			if box.BoxStyle.Direction != document.DirectionHorizontal {
+				t.Errorf("expected DirectionHorizontal, got %v", box.BoxStyle.Direction)
+			}
+			if box.BreakPolicy.BreakInside != document.BreakAvoid {
+				t.Errorf("expected BreakInside=BreakAvoid, got %v", box.BreakPolicy.BreakInside)
+			}
+		})
+	}
+}

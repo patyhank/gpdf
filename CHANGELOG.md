@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Per-column horizontal text alignment for tables (#26)
+  - Builder: `template.ColumnAlign(aligns ...document.TextAlign)` — sets the horizontal alignment for each column in both the header and body. Columns without a provided alignment fall back to the default left alignment.
+  - JSON / GoTemplate schema: `table.columnAlign: ["left", "center", "right"]`
+- Example tests: `_examples/{builder,json,gotemplate}/38_table_column_align_test.go` with shared golden
+
 ## [1.0.9] - 2026-05-06
 
 ### Fixed

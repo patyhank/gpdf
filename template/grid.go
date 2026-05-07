@@ -288,18 +288,10 @@ func (c *ColBuilder) Table(header []string, rows [][]string, opts ...TableOption
 	// Build header row.
 	if len(header) > 0 {
 		headerRow := document.TableRow{}
-		for _, h := range header {
-			cellStyle := c.defaultStyle()
-			cellStyle.FontWeight = document.WeightBold
-			if tblCfg.headerBgColor != nil {
-				cellStyle.Background = tblCfg.headerBgColor
-			}
-			if tblCfg.headerTextColor != nil {
-				cellStyle.Color = *tblCfg.headerTextColor
-			}
+		for j, h := range header {
 			headerRow.Cells = append(headerRow.Cells, document.TableCell{
 				Content: []document.DocumentNode{
-					&document.Text{Content: h, TextStyle: cellStyle},
+					&document.Text{Content: h, TextStyle: c.tableHeaderCellStyle(&tblCfg, j)},
 				},
 				ColSpan:   1,
 				RowSpan:   1,
@@ -312,17 +304,10 @@ func (c *ColBuilder) Table(header []string, rows [][]string, opts ...TableOption
 	// Build body rows.
 	for i, row := range rows {
 		bodyRow := document.TableRow{}
-		for _, cell := range row {
-			cellStyle := c.defaultStyle()
-			if tblCfg.stripeColor != nil && i%2 == 1 {
-				cellStyle.Background = tblCfg.stripeColor
-			}
-			if tblCfg.hasCellVAlign {
-				cellStyle.VerticalAlign = tblCfg.cellVAlign
-			}
+		for j, cell := range row {
 			bodyRow.Cells = append(bodyRow.Cells, document.TableCell{
 				Content: []document.DocumentNode{
-					&document.Text{Content: cell, TextStyle: cellStyle},
+					&document.Text{Content: cell, TextStyle: c.tableBodyCellStyle(&tblCfg, i, j)},
 				},
 				ColSpan:   1,
 				RowSpan:   1,
@@ -344,6 +329,40 @@ func (c *ColBuilder) Table(header []string, rows [][]string, opts ...TableOption
 	applyTableDecoration(tbl, &tblCfg)
 
 	c.nodes = append(c.nodes, tbl)
+}
+
+// tableHeaderCellStyle builds the per-cell text Style for a header cell at
+// column j, applying header background/text color and per-column alignment.
+func (c *ColBuilder) tableHeaderCellStyle(cfg *tableConfig, j int) document.Style {
+	s := c.defaultStyle()
+	s.FontWeight = document.WeightBold
+	if cfg.headerBgColor != nil {
+		s.Background = cfg.headerBgColor
+	}
+	if cfg.headerTextColor != nil {
+		s.Color = *cfg.headerTextColor
+	}
+	if j < len(cfg.columnAligns) {
+		s.TextAlign = cfg.columnAligns[j]
+	}
+	return s
+}
+
+// tableBodyCellStyle builds the per-cell text Style for a body cell at row i,
+// column j, applying stripe color, vertical alignment, and per-column
+// horizontal alignment.
+func (c *ColBuilder) tableBodyCellStyle(cfg *tableConfig, i, j int) document.Style {
+	s := c.defaultStyle()
+	if cfg.stripeColor != nil && i%2 == 1 {
+		s.Background = cfg.stripeColor
+	}
+	if cfg.hasCellVAlign {
+		s.VerticalAlign = cfg.cellVAlign
+	}
+	if j < len(cfg.columnAligns) {
+		s.TextAlign = cfg.columnAligns[j]
+	}
+	return s
 }
 
 // applyTableDecoration copies border, background, and border-collapse

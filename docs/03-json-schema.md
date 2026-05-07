@@ -259,6 +259,7 @@ The `style` object can be applied to text elements:
         ["Bob", "25", "New York"]
     ],
     "columnWidths": [40, 30, 30],
+    "columnAlign": ["left", "right", "left"],
     "headerStyle": {"bold": true, "color": "#FFFFFF", "background": "#1A237E"},
     "stripeColor": "#F5F5F5"
 }

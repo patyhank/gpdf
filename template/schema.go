@@ -150,6 +150,7 @@ type SchemaTable struct {
 	Header         []string      `json:"header"`
 	Rows           [][]string    `json:"rows"`
 	ColumnWidths   []float64     `json:"columnWidths,omitempty"`
+	ColumnAlign    []string      `json:"columnAlign,omitempty"` // per-column horizontal alignment: "left", "center", "right"
 	HeaderStyle    *SchemaStyle  `json:"headerStyle,omitempty"`
 	StripeColor    string        `json:"stripeColor,omitempty"`
 	CellVAlign     string        `json:"cellVAlign,omitempty"` // "top", "middle", "bottom"
@@ -842,6 +843,22 @@ func parseImageAlign(s string) (document.TextAlign, bool) {
 	}
 }
 
+// parseSchemaColumnAligns converts per-column alignment strings into TextAlign
+// values. Unrecognized entries fall back to AlignLeft. Returns nil for an
+// empty input so callers can skip applying the option entirely.
+func parseSchemaColumnAligns(s []string) []document.TextAlign {
+	if len(s) == 0 {
+		return nil
+	}
+	aligns := make([]document.TextAlign, len(s))
+	for i, a := range s {
+		if align, ok := parseImageAlign(a); ok {
+			aligns[i] = align
+		}
+	}
+	return aligns
+}
+
 func buildSchemaTable(c *ColBuilder, tbl *SchemaTable) {
 	if tbl == nil {
 		return
@@ -863,6 +880,9 @@ func buildSchemaTable(c *ColBuilder, tbl *SchemaTable) {
 		if align, ok := parseVerticalAlign(tbl.CellVAlign); ok {
 			opts = append(opts, TableCellVAlign(align))
 		}
+	}
+	if aligns := parseSchemaColumnAligns(tbl.ColumnAlign); len(aligns) > 0 {
+		opts = append(opts, ColumnAlign(aligns...))
 	}
 	if spec, ok := parseSchemaBorder(tbl.Border); ok {
 		opts = append(opts, WithTableBorder(spec))

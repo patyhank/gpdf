@@ -843,6 +843,22 @@ func parseImageAlign(s string) (document.TextAlign, bool) {
 	}
 }
 
+// parseSchemaColumnAligns converts per-column alignment strings into TextAlign
+// values. Unrecognized entries fall back to AlignLeft. Returns nil for an
+// empty input so callers can skip applying the option entirely.
+func parseSchemaColumnAligns(s []string) []document.TextAlign {
+	if len(s) == 0 {
+		return nil
+	}
+	aligns := make([]document.TextAlign, len(s))
+	for i, a := range s {
+		if align, ok := parseImageAlign(a); ok {
+			aligns[i] = align
+		}
+	}
+	return aligns
+}
+
 func buildSchemaTable(c *ColBuilder, tbl *SchemaTable) {
 	if tbl == nil {
 		return
@@ -865,13 +881,7 @@ func buildSchemaTable(c *ColBuilder, tbl *SchemaTable) {
 			opts = append(opts, TableCellVAlign(align))
 		}
 	}
-	if len(tbl.ColumnAlign) > 0 {
-		aligns := make([]document.TextAlign, len(tbl.ColumnAlign))
-		for i, a := range tbl.ColumnAlign {
-			if align, ok := parseImageAlign(a); ok {
-				aligns[i] = align
-			}
-		}
+	if aligns := parseSchemaColumnAligns(tbl.ColumnAlign); len(aligns) > 0 {
 		opts = append(opts, ColumnAlign(aligns...))
 	}
 	if spec, ok := parseSchemaBorder(tbl.Border); ok {

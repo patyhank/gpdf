@@ -150,6 +150,7 @@ type SchemaTable struct {
 	Header         []string      `json:"header"`
 	Rows           [][]string    `json:"rows"`
 	ColumnWidths   []float64     `json:"columnWidths,omitempty"`
+	ColumnAlign    []string      `json:"columnAlign,omitempty"` // per-column horizontal alignment: "left", "center", "right"
 	HeaderStyle    *SchemaStyle  `json:"headerStyle,omitempty"`
 	StripeColor    string        `json:"stripeColor,omitempty"`
 	CellVAlign     string        `json:"cellVAlign,omitempty"` // "top", "middle", "bottom"
@@ -863,6 +864,15 @@ func buildSchemaTable(c *ColBuilder, tbl *SchemaTable) {
 		if align, ok := parseVerticalAlign(tbl.CellVAlign); ok {
 			opts = append(opts, TableCellVAlign(align))
 		}
+	}
+	if len(tbl.ColumnAlign) > 0 {
+		aligns := make([]document.TextAlign, len(tbl.ColumnAlign))
+		for i, a := range tbl.ColumnAlign {
+			if align, ok := parseImageAlign(a); ok {
+				aligns[i] = align
+			}
+		}
+		opts = append(opts, ColumnAlign(aligns...))
 	}
 	if spec, ok := parseSchemaBorder(tbl.Border); ok {
 		opts = append(opts, WithTableBorder(spec))

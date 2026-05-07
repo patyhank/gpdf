@@ -288,7 +288,7 @@ func (c *ColBuilder) Table(header []string, rows [][]string, opts ...TableOption
 	// Build header row.
 	if len(header) > 0 {
 		headerRow := document.TableRow{}
-		for _, h := range header {
+		for j, h := range header {
 			cellStyle := c.defaultStyle()
 			cellStyle.FontWeight = document.WeightBold
 			if tblCfg.headerBgColor != nil {
@@ -296,6 +296,9 @@ func (c *ColBuilder) Table(header []string, rows [][]string, opts ...TableOption
 			}
 			if tblCfg.headerTextColor != nil {
 				cellStyle.Color = *tblCfg.headerTextColor
+			}
+			if j < len(tblCfg.columnAligns) {
+				cellStyle.TextAlign = tblCfg.columnAligns[j]
 			}
 			headerRow.Cells = append(headerRow.Cells, document.TableCell{
 				Content: []document.DocumentNode{
@@ -312,13 +315,16 @@ func (c *ColBuilder) Table(header []string, rows [][]string, opts ...TableOption
 	// Build body rows.
 	for i, row := range rows {
 		bodyRow := document.TableRow{}
-		for _, cell := range row {
+		for j, cell := range row {
 			cellStyle := c.defaultStyle()
 			if tblCfg.stripeColor != nil && i%2 == 1 {
 				cellStyle.Background = tblCfg.stripeColor
 			}
 			if tblCfg.hasCellVAlign {
 				cellStyle.VerticalAlign = tblCfg.cellVAlign
+			}
+			if j < len(tblCfg.columnAligns) {
+				cellStyle.TextAlign = tblCfg.columnAligns[j]
 			}
 			bodyRow.Cells = append(bodyRow.Cells, document.TableCell{
 				Content: []document.DocumentNode{

@@ -931,6 +931,20 @@ func TestColumnWidthsOption(t *testing.T) {
 	}
 }
 
+func TestColumnAlignOption(t *testing.T) {
+	cfg := tableConfig{}
+	ColumnAlign(document.AlignLeft, document.AlignRight, document.AlignCenter)(&cfg)
+	if len(cfg.columnAligns) != 3 {
+		t.Fatalf("column aligns len: got %d, want 3", len(cfg.columnAligns))
+	}
+	expected := []document.TextAlign{document.AlignLeft, document.AlignRight, document.AlignCenter}
+	for i, a := range cfg.columnAligns {
+		if a != expected[i] {
+			t.Errorf("column align[%d]: got %v, want %v", i, a, expected[i])
+		}
+	}
+}
+
 func TestLineColorOption(t *testing.T) {
 	cfg := lineConfig{}
 	c := pdf.Green

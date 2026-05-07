@@ -174,6 +174,7 @@ type tableConfig struct {
 	headerTextColor *pdf.Color
 	stripeColor     *pdf.Color
 	columnWidths    []float64
+	columnAligns    []document.TextAlign
 	cellVAlign      document.VerticalAlign
 	hasCellVAlign   bool
 	border          *BorderSpec
@@ -216,6 +217,25 @@ func TableCellVAlign(align document.VerticalAlign) TableOption {
 	return func(cfg *tableConfig) {
 		cfg.cellVAlign = align
 		cfg.hasCellVAlign = true
+	}
+}
+
+// ColumnAlign sets the horizontal text alignment for each table column. Each
+// argument applies to the column at the same index in both the header and
+// body rows; columns without a provided alignment fall back to the default
+// left alignment. Typical use case is right-aligning numeric or currency
+// columns:
+//
+//	c.Table(header, rows,
+//	    template.ColumnAlign(
+//	        document.AlignLeft,   // Item
+//	        document.AlignRight,  // Qty
+//	        document.AlignRight,  // Price
+//	    ),
+//	)
+func ColumnAlign(aligns ...document.TextAlign) TableOption {
+	return func(cfg *tableConfig) {
+		cfg.columnAligns = aligns
 	}
 }
 

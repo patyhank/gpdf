@@ -213,6 +213,7 @@ c.Table(
 | Option | Description |
 |---|---|
 | `ColumnWidths(widths...)` | Column width percentages (should sum to 100) |
+| `ColumnAlign(aligns...)` | Per-column horizontal alignment (`AlignLeft`, `AlignCenter`, `AlignRight`); applies to header and body cells |
 | `TableHeaderStyle(opts...)` | Header text/background styling (takes `TextOption`s) |
 | `TableStripe(color)` | Alternating row background color |
 | `TableCellVAlign(align)` | Vertical alignment for body cells (`VAlignTop`, `VAlignMiddle`, `VAlignBottom`) |

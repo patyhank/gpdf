@@ -34,9 +34,17 @@ func (r *builtinFontResolver) Resolve(family string, weight document.FontWeight,
 	variantID := buildFontVariantID(family, bold, italic)
 
 	// Try variant-specific font first, then fall back to base family.
+	// Track which registration key actually resolved so that MeasureString
+	// and LineBreak can look the font back up in r.fonts. Using ttf.Name()
+	// (the PostScript name) here breaks that lookup when the caller
+	// registered the font under a different key via WithFont.
+	resolvedKey := variantID
 	ttf, ok := r.fonts[variantID]
 	if !ok {
 		ttf, ok = r.fonts[family]
+		if ok {
+			resolvedKey = family
+		}
 	}
 
 	if !ok {
@@ -70,7 +78,7 @@ func (r *builtinFontResolver) Resolve(family string, weight document.FontWeight,
 	m := ttf.Metrics()
 	scale := 1.0 / float64(m.UnitsPerEm)
 	return layout.ResolvedFont{
-		ID: ttf.Name(),
+		ID: resolvedKey,
 		Metrics: layout.FontMetrics{
 			Ascender:   float64(m.Ascender) * scale,
 			Descender:  float64(m.Descender) * scale,

@@ -80,7 +80,7 @@ func TestExample_32_CJK_Text(t *testing.T) {
 	page.AutoRow(func(r *template.RowBuilder) {
 		r.Col(12, func(c *template.ColBuilder) {
 			c.Spacer(document.Mm(3))
-			c.Line(template.LineThickness(document.Pt(0.5)), template.LineColor(pdf.Gray(0.7)))
+			c.Line(template.LineThickness(document.Pt(0.5)), template.LineColor(pdf.RGBHex(0xB3B3B3)))
 			c.Spacer(document.Mm(3))
 		})
 	})
@@ -110,7 +110,7 @@ func TestExample_32_CJK_Text(t *testing.T) {
 	page.AutoRow(func(r *template.RowBuilder) {
 		r.Col(12, func(c *template.ColBuilder) {
 			c.Spacer(document.Mm(3))
-			c.Line(template.LineThickness(document.Pt(0.5)), template.LineColor(pdf.Gray(0.7)))
+			c.Line(template.LineThickness(document.Pt(0.5)), template.LineColor(pdf.RGBHex(0xB3B3B3)))
 			c.Spacer(document.Mm(3))
 		})
 	})
@@ -140,7 +140,7 @@ func TestExample_32_CJK_Text(t *testing.T) {
 	page.AutoRow(func(r *template.RowBuilder) {
 		r.Col(12, func(c *template.ColBuilder) {
 			c.Spacer(document.Mm(3))
-			c.Line(template.LineThickness(document.Pt(0.5)), template.LineColor(pdf.Gray(0.7)))
+			c.Line(template.LineThickness(document.Pt(0.5)), template.LineColor(pdf.RGBHex(0xB3B3B3)))
 			c.Spacer(document.Mm(3))
 		})
 	})
@@ -155,7 +155,7 @@ func TestExample_32_CJK_Text(t *testing.T) {
 	})
 
 	headerStyle := []template.TextOption{
-		template.Bold(), template.TextColor(pdf.White), template.BgColor(pdf.RGBHex(0x37474F)),
+		template.Bold(), template.TextColor(pdf.RGBHex(0xFFFFFF)), template.BgColor(pdf.RGBHex(0x37474F)),
 	}
 	// Header row
 	page.AutoRow(func(r *template.RowBuilder) {
@@ -191,7 +191,7 @@ func TestExample_32_CJK_Text(t *testing.T) {
 		r.Col(12, func(c *template.ColBuilder) {
 			c.Spacer(document.Mm(5))
 			c.Text("CJK characters are fully supported through TrueType font embedding.",
-				template.AlignCenter(), template.Italic(), template.TextColor(pdf.Gray(0.5)),
+				template.AlignCenter(), template.Italic(), template.TextColor(pdf.RGBHex(0x808080)),
 				template.FontFamily("NotoSansJP"))
 		})
 	})
@@ -399,7 +399,7 @@ func TestExample_32d_CJK_Mixed(t *testing.T) {
 		r.Col(12, func(c *template.ColBuilder) {
 			c.Spacer(document.Mm(5))
 			c.Text("CJK characters are fully supported through TrueType font embedding.",
-				template.AlignCenter(), template.Italic(), template.TextColor(pdf.Gray(0.5)),
+				template.AlignCenter(), template.Italic(), template.TextColor(pdf.RGBHex(0x808080)),
 				template.FontFamily("NotoSansJP"))
 		})
 	})

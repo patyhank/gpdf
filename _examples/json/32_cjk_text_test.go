@@ -56,7 +56,7 @@ func TestJSON_32_CJK_Text(t *testing.T) {
 			{"row": {"cols": [
 				{"span": 12, "elements": [
 					{"type": "spacer", "height": "3mm"},
-					{"type": "line", "thickness": "0.5pt", "color": "#B3B3B3"},
+					{"type": "line", "line": {"thickness": "0.5pt", "color": "#B3B3B3"}},
 					{"type": "spacer", "height": "3mm"}
 				]}
 			]}},
@@ -81,7 +81,7 @@ func TestJSON_32_CJK_Text(t *testing.T) {
 			{"row": {"cols": [
 				{"span": 12, "elements": [
 					{"type": "spacer", "height": "3mm"},
-					{"type": "line", "thickness": "0.5pt", "color": "#B3B3B3"},
+					{"type": "line", "line": {"thickness": "0.5pt", "color": "#B3B3B3"}},
 					{"type": "spacer", "height": "3mm"}
 				]}
 			]}},
@@ -106,7 +106,7 @@ func TestJSON_32_CJK_Text(t *testing.T) {
 			{"row": {"cols": [
 				{"span": 12, "elements": [
 					{"type": "spacer", "height": "3mm"},
-					{"type": "line", "thickness": "0.5pt", "color": "#B3B3B3"},
+					{"type": "line", "line": {"thickness": "0.5pt", "color": "#B3B3B3"}},
 					{"type": "spacer", "height": "3mm"}
 				]}
 			]}},

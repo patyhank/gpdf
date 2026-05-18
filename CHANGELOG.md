@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.11] - 2026-05-18
+
+### Fixed
+- `ResolvedFont.ID` now uses the font registration key instead of the resolved family name, so per-family overrides (e.g. registering a CJK font under a custom key) are honored at render time (#30)
+  - `template/fontresolver.go`: the resolver stores the input registration key on `ResolvedFont.ID` so downstream font lookups in the renderer match the registered font, not the resolved family fallback
+  - `template/fontresolver_test.go`: regression coverage for registration-key vs family-name ID
+  - Golden refresh: `_examples/testdata/golden/32_cjk_text.pdf` and `32d_cjk_mixed.pdf` regenerated to reflect the corrected font ID embedded in the content stream
+
+## [1.0.10] - 2026-05-07
+
 ### Added
 - Per-column horizontal text alignment for tables (#26)
   - Builder: `template.ColumnAlign(aligns ...document.TextAlign)` — sets the horizontal alignment for each column in both the header and body. Columns without a provided alignment fall back to the default left alignment.
@@ -172,7 +182,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - Reed-Solomon coefficient order in QR code encoder
 - binary.Write return value handling for errcheck lint
 
-[Unreleased]: https://github.com/gpdf-dev/gpdf/compare/v1.0.9...HEAD
+[Unreleased]: https://github.com/gpdf-dev/gpdf/compare/v1.0.11...HEAD
+[1.0.11]: https://github.com/gpdf-dev/gpdf/compare/v1.0.10...v1.0.11
+[1.0.10]: https://github.com/gpdf-dev/gpdf/compare/v1.0.9...v1.0.10
 [1.0.9]: https://github.com/gpdf-dev/gpdf/compare/v1.0.8...v1.0.9
 [1.0.8]: https://github.com/gpdf-dev/gpdf/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/gpdf-dev/gpdf/compare/v1.0.6...v1.0.7

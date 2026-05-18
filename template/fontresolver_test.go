@@ -2,6 +2,8 @@ package template
 
 import (
 	"math"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/gpdf-dev/gpdf/document"
@@ -65,6 +67,47 @@ func TestFontResolver_Resolve_Standard14Metrics(t *testing.T) {
 	}
 	if math.Abs(f.Metrics.Descender-(-0.207)) > 0.001 {
 		t.Errorf("Descender = %.4f, want -0.207", f.Metrics.Descender)
+	}
+}
+
+// Regression for #30: ResolvedFont.ID must match the registration key, not
+// the TrueType PostScript name. When they diverge (e.g. WithFont("NotoSansJP",
+// data) where the PS name is "NotoSansJP-Regular"), MeasureString and
+// LineBreak look up r.fonts[f.ID] and silently fall back to approximate
+// metrics, which makes layout disagree with the embedded glyphs.
+func TestFontResolver_Resolve_IDMatchesRegistrationKey(t *testing.T) {
+	// Use the same Noto fixture as the CJK example tests. Skip when absent
+	// so this doesn't gate CI environments that don't ship the font.
+	path := filepath.Join("..", "..", "NotoSansJP-Regular.ttf")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Skipf("font fixture not found: %s", path)
+	}
+	ttf, err := font.ParseTrueType(data)
+	if err != nil {
+		t.Fatalf("ParseTrueType: %v", err)
+	}
+	// Sanity: this fixture must actually exhibit the PS-name/key divergence,
+	// otherwise the test wouldn't be exercising the bug.
+	if ttf.Name() == "NotoSansJP" {
+		t.Skip("fixture PS name matches registration key; no divergence to test")
+	}
+
+	r := newBuiltinFontResolver(map[string]*font.TrueTypeFont{
+		"NotoSansJP": ttf,
+	})
+	f := r.Resolve("NotoSansJP", document.WeightNormal, false)
+
+	if f.ID != "NotoSansJP" {
+		t.Errorf("ResolvedFont.ID = %q, want %q (registration key, not PS name)", f.ID, "NotoSansJP")
+	}
+
+	// MeasureString must dispatch to the registered TTF, not the
+	// approximate fallback (which would yield runes * size * 0.5).
+	got := r.MeasureString(f, "あ", 12)
+	approx := 1.0 * 12 * 0.5
+	if math.Abs(got-approx) < 0.001 {
+		t.Errorf("MeasureString fell back to approximation (%.3f); ID lookup missed registered TTF", got)
 	}
 }
 

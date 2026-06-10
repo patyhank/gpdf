@@ -621,10 +621,10 @@ func TestColBuilderTableWithHeaderStyle(t *testing.T) {
 	)
 	tbl := cb.nodes[0].(*document.Table)
 	headerCell := tbl.Header[0].Cells[0]
-	textNode := headerCell.Content[0].(*document.Text)
-	if textNode.TextStyle.Background == nil {
+	if headerCell.CellStyle.Background == nil {
 		t.Error("header bg should not be nil")
 	}
+	textNode := headerCell.Content[0].(*document.Text)
 	if textNode.TextStyle.Color != tc {
 		t.Errorf("header text color: got %v, want %v", textNode.TextStyle.Color, tc)
 	}
@@ -641,13 +641,11 @@ func TestColBuilderTableWithStripe(t *testing.T) {
 	)
 	tbl := cb.nodes[0].(*document.Table)
 	// Row 0 (even) should not have stripe.
-	cell0 := tbl.Body[0].Cells[0].Content[0].(*document.Text)
-	if cell0.TextStyle.Background != nil {
+	if tbl.Body[0].Cells[0].CellStyle.Background != nil {
 		t.Error("even row should not have stripe background")
 	}
 	// Row 1 (odd) should have stripe.
-	cell1 := tbl.Body[1].Cells[0].Content[0].(*document.Text)
-	if cell1.TextStyle.Background == nil {
+	if tbl.Body[1].Cells[0].CellStyle.Background == nil {
 		t.Error("odd row should have stripe background")
 	}
 }

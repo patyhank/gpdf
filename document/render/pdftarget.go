@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"image/color"
 	"image/png"
 	"sort"
 	"strings"
@@ -876,15 +877,18 @@ func decodePNGToRaw(data []byte) (rgb []byte, alpha []byte, w, h int, err error)
 
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			r, g, b, a := img.At(x, y).RGBA()
-			rgb[rgbIdx] = byte(r >> 8)
-			rgb[rgbIdx+1] = byte(g >> 8)
-			rgb[rgbIdx+2] = byte(b >> 8)
+			// 取「非預乘 alpha」的straight RGB。color.Color.RGBA() 回傳的是
+			// 預乘 alpha 的值，若直接存入 DeviceRGB 又搭配 SMask，PDF 合成時會
+			// 把 alpha 乘第二次，半透明像素的顏色被壓近黑色而呈現灰色。改用
+			// NRGBA 取得未預乘的真實顏色，由 SMask 單獨負責透明度。
+			c := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
+			rgb[rgbIdx] = c.R
+			rgb[rgbIdx+1] = c.G
+			rgb[rgbIdx+2] = c.B
 			rgbIdx += 3
-			ab := byte(a >> 8)
-			alphaData[alphaIdx] = ab
+			alphaData[alphaIdx] = c.A
 			alphaIdx++
-			if ab != 0xFF {
+			if c.A != 0xFF {
 				hasAlpha = true
 			}
 		}

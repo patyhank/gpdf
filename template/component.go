@@ -387,6 +387,7 @@ type qrCodeConfig struct {
 	minSize document.Value
 	ecLevel qrcode.ErrorCorrectionLevel
 	scale   int
+	align   document.TextAlign
 }
 
 // QRSize sets the display size (width = height) of the QR code.
@@ -416,6 +417,13 @@ func QRErrorCorrection(level qrcode.ErrorCorrectionLevel) QRCodeOption {
 func QRScale(s int) QRCodeOption {
 	return func(cfg *qrCodeConfig) {
 		cfg.scale = s
+	}
+}
+
+// QRAlign sets the horizontal alignment of the QR code within its column.
+func QRAlign(align document.TextAlign) QRCodeOption {
+	return func(cfg *qrCodeConfig) {
+		cfg.align = align
 	}
 }
 

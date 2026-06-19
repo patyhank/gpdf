@@ -518,6 +518,10 @@ func (c *ColBuilder) QRCode(data string, opts ...QRCodeOption) {
 		FitMode: document.FitContain,
 	}
 
+	if cfg.align != document.AlignLeft {
+		imgNode.ImgStyle.TextAlign = cfg.align
+	}
+
 	if cfg.size.Amount > 0 {
 		imgNode.DisplayWidth = cfg.size
 		imgNode.DisplayHeight = cfg.size

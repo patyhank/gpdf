@@ -1858,6 +1858,35 @@ func TestLayoutImage_ExplicitWidth(t *testing.T) {
 	}
 }
 
+func TestBlockLayout_ImageAlignment(t *testing.T) {
+	bl := NewBlockLayout()
+	container := &document.Box{
+		Content: []document.DocumentNode{
+			&document.Image{
+				Source:       document.ImageSource{Width: 200, Height: 100},
+				DisplayWidth: document.Pt(100),
+				ImgStyle:     document.Style{TextAlign: document.AlignCenter},
+			},
+			&document.Image{
+				Source:       document.ImageSource{Width: 200, Height: 100},
+				DisplayWidth: document.Pt(100),
+				ImgStyle:     document.Style{TextAlign: document.AlignRight},
+			},
+		},
+	}
+
+	result := bl.Layout(container, Constraints{AvailableWidth: 500, AvailableHeight: 700})
+	if len(result.Children) != 2 {
+		t.Fatalf("Children = %d, want 2", len(result.Children))
+	}
+	if !approxEqual(result.Children[0].Position.X, 200, 0.1) {
+		t.Errorf("center image X = %v, want 200", result.Children[0].Position.X)
+	}
+	if !approxEqual(result.Children[1].Position.X, 400, 0.1) {
+		t.Errorf("right image X = %v, want 400", result.Children[1].Position.X)
+	}
+}
+
 func TestLayoutImage_ExplicitHeight(t *testing.T) {
 	bl := NewBlockLayout()
 	img := &document.Image{

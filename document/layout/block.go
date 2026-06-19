@@ -86,7 +86,7 @@ func (bl *BlockLayout) Layout(node document.DocumentNode, constraints Constraint
 		placed = append(placed, PlacedNode{
 			Node: child,
 			Position: document.Point{
-				X: bc.contentX,
+				X: bc.contentX + horizontalChildOffset(child, result.Bounds.Width, bc.contentWidth),
 				Y: bc.contentY + cursorY,
 			},
 			Size:     document.Size{Width: result.Bounds.Width, Height: result.Bounds.Height},
@@ -532,6 +532,21 @@ func (bl *BlockLayout) layoutChild(child document.DocumentNode, constraints Cons
 
 // layoutImage computes the display dimensions for an image node,
 // respecting explicit size constraints, fit mode, and aspect ratio.
+func horizontalChildOffset(child document.DocumentNode, childWidth, availableWidth float64) float64 {
+	if child == nil || child.NodeType() != document.NodeImage || childWidth >= availableWidth {
+		return 0
+	}
+
+	switch child.Style().TextAlign {
+	case document.AlignCenter:
+		return (availableWidth - childWidth) / 2
+	case document.AlignRight:
+		return availableWidth - childWidth
+	default:
+		return 0
+	}
+}
+
 func (bl *BlockLayout) layoutImage(child document.DocumentNode, constraints Constraints) Result {
 	img, ok := child.(*document.Image)
 	if !ok {

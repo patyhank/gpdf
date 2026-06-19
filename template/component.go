@@ -277,14 +277,16 @@ func WithTableCellBorder(spec BorderSpec) TableOption {
 type BoxOption func(*boxConfig)
 
 type boxConfig struct {
-	border     *BorderSpec
-	background *pdf.Color
-	padding    document.Edges
-	hasPadding bool
-	margin     document.Edges
-	hasMargin  bool
-	width      document.Value
-	height     document.Value
+	border      *BorderSpec
+	borderEdges document.BorderEdges
+	hasBorder   bool
+	background  *pdf.Color
+	padding     document.Edges
+	hasPadding  bool
+	margin      document.Edges
+	hasMargin   bool
+	width       document.Value
+	height      document.Value
 }
 
 // WithBoxBorder draws a border around the box using the given [BorderSpec].

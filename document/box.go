@@ -38,6 +38,15 @@ type BoxStyle struct {
 	Background *pdf.Color
 	Direction  Direction
 	Position   Position
+
+	// Flexbox layout properties. Justify, AlignItems, and Gap control the
+	// arrangement of children when Direction is DirectionHorizontal.
+	// FlexGrow is set on individual child boxes to distribute leftover
+	// width proportionally.
+	Justify    JustifyContent
+	AlignItems AlignItems
+	Gap        Value
+	FlexGrow   int
 }
 
 // NodeType returns NodeBox.
@@ -46,12 +55,18 @@ func (b *Box) NodeType() NodeType { return NodeBox }
 // Children returns the box's content nodes.
 func (b *Box) Children() []DocumentNode { return b.Content }
 
-// Style constructs a Style from the BoxStyle's spacing and decoration fields.
+// Style constructs a Style from the BoxStyle's spacing, decoration, and
+// flex layout fields.
 func (b *Box) Style() Style {
 	return Style{
 		Margin:     b.BoxStyle.Margin,
 		Padding:    b.BoxStyle.Padding,
 		Border:     b.BoxStyle.Border,
 		Background: b.BoxStyle.Background,
+		Direction:  b.BoxStyle.Direction,
+		Justify:    b.BoxStyle.Justify,
+		AlignItems: b.BoxStyle.AlignItems,
+		Gap:        b.BoxStyle.Gap,
+		FlexGrow:   b.BoxStyle.FlexGrow,
 	}
 }

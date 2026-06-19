@@ -29,6 +29,18 @@ type Style struct {
 	Margin  Edges
 	Padding Edges
 	Border  BorderEdges
+
+	// Flexbox layout properties. These only affect Box containers with
+	// DirectionHorizontal; they are ignored by other node types.
+	Direction  Direction      // main-axis direction (vertical / horizontal)
+	Justify    JustifyContent // main-axis distribution
+	AlignItems AlignItems     // cross-axis alignment
+	Gap        Value          // spacing between flex children
+	FlexGrow   int            // grow factor for flex width distribution (0 = don't grow)
+
+	// Explicit size constraints (used by Box containers).
+	Width  Value
+	Height Value
 }
 
 // DefaultStyle returns a Style with sensible defaults: 12pt black text,

@@ -259,7 +259,9 @@ func (c *ColBuilder) Box(fn func(c *ColBuilder), opts ...BoxOption) {
 			Height: cfg.height,
 		},
 	}
-	if cfg.border != nil {
+	if cfg.hasBorder {
+		box.BoxStyle.Border = cfg.borderEdges
+	} else if cfg.border != nil {
 		box.BoxStyle.Border = cfg.border.toEdges()
 	}
 	if cfg.background != nil {
@@ -272,6 +274,81 @@ func (c *ColBuilder) Box(fn func(c *ColBuilder), opts ...BoxOption) {
 		box.BoxStyle.Margin = cfg.margin
 	}
 	c.nodes = append(c.nodes, box)
+}
+
+// FlexBox adds a styled container whose layout is driven by [StyleOption]
+// values rather than [BoxOption] values. This is the primary entry point
+// for the unified style system: any [StyleOption] (font, color, padding,
+// border, flex properties, etc.) can be passed directly.
+//
+// The container defaults to vertical (block) layout. Use [FlexRow] to
+// make it horizontal, [Justify] / [AlignItems] / [Gap] to control child
+// distribution, and [FlexGrow] on child boxes to distribute leftover width.
+//
+//	card := template.Class(
+//	    template.FlexRow(),
+//	    template.Justify(document.JustifyBetween),
+//	    template.AlignItems(document.AlignItemsCenter),
+//	    template.Gap(document.Mm(4)),
+//	    template.Padding(document.UniformEdges(document.Mm(8))),
+//	    template.BgColor(pdf.Gray(0.95)),
+//	)
+//	c.FlexBox(func(c *template.ColBuilder) {
+//	    c.Text("Left", template.FlexGrow(1))
+//	    c.Text("Right")
+//	}, card)
+func (c *ColBuilder) FlexBox(fn func(c *ColBuilder), opts ...StyleOption) {
+	s := document.DefaultStyle()
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&s)
+		}
+	}
+	inner := &ColBuilder{doc: c.doc}
+	if fn != nil {
+		fn(inner)
+	}
+	box := &document.Box{
+		Content: inner.buildNodes(),
+		BoxStyle: document.BoxStyle{
+			Width:      s.Width,
+			Height:     s.Height,
+			Margin:     s.Margin,
+			Padding:    s.Padding,
+			Border:     s.Border,
+			Background: s.Background,
+			Direction:  s.Direction,
+			Justify:    s.Justify,
+			AlignItems: s.AlignItems,
+			Gap:        s.Gap,
+			FlexGrow:   s.FlexGrow,
+		},
+	}
+	c.nodes = append(c.nodes, box)
+}
+
+// FlexRow adds a horizontal flex container. It is shorthand for
+// [FlexBox] with [FlexRow] prepended to opts.
+//
+//	c.FlexRow(func(c *template.ColBuilder) {
+//	    c.Text("A")
+//	    c.Text("B")
+//	}, template.Justify(document.JustifyCenter), template.Gap(document.Mm(4)))
+func (c *ColBuilder) FlexRow(fn func(c *ColBuilder), opts ...StyleOption) {
+	all := make([]StyleOption, 0, 1+len(opts))
+	all = append(all, FlexRow())
+	all = append(all, opts...)
+	c.FlexBox(fn, all...)
+}
+
+// FlexCol adds a vertical flex container (block layout). It is shorthand
+// for [FlexBox] with [FlexCol] prepended to opts. Useful for explicitness
+// or to override a parent's horizontal direction.
+func (c *ColBuilder) FlexCol(fn func(c *ColBuilder), opts ...StyleOption) {
+	all := make([]StyleOption, 0, 1+len(opts))
+	all = append(all, FlexCol())
+	all = append(all, opts...)
+	c.FlexBox(fn, all...)
 }
 
 // Table adds a table with header and body rows.

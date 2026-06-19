@@ -319,10 +319,10 @@ func extractBreakPolicy(node document.DocumentNode) document.BreakPolicy {
 	return document.BreakPolicy{}
 }
 
-// layoutHorizontal arranges children left-to-right. Each child's width
-// is determined by its BoxStyle.Width (typically a percentage of the
-// parent). Children without an explicit width share the remaining space
-// equally. The row height equals the tallest child.
+// layoutHorizontal arranges children left-to-right (flex row). Each child's
+// width is determined by its explicit BoxStyle.Width, its FlexGrow factor,
+// or equal sharing of remaining space. The parent's Justify, AlignItems,
+// and Gap properties control distribution along the main and cross axes.
 func (bl *BlockLayout) layoutHorizontal(node document.DocumentNode, constraints Constraints) Result {
 	style := node.Style()
 	fontSize := style.FontSize
@@ -351,16 +351,23 @@ func (bl *BlockLayout) layoutHorizontal(node document.DocumentNode, constraints 
 	fixedContentHeight := resolveFixedHeight(node, constraints.AvailableWidth, fontSize, margin, padding, borderWidths)
 
 	children := node.Children()
-	childWidths := resolveChildWidths(children, contentWidth, fontSize)
+
+	// Resolve gap (spacing between flex children).
+	gapValue := 0.0
+	if style.Gap.Unit != document.UnitAuto && style.Gap.Amount > 0 {
+		gapValue = style.Gap.Resolve(contentWidth, fontSize)
+	}
+
+	childWidths := resolveFlexChildWidths(children, contentWidth, gapValue, fontSize)
 
 	childAvailHeight := contentHeight
 	if fixedContentHeight >= 0 && fixedContentHeight < childAvailHeight {
 		childAvailHeight = fixedContentHeight
 	}
 
-	var placed []PlacedNode
+	// Layout each child and record results.
 	childResults := make([]Result, len(children))
-	cursorX := 0.0
+	childHeights := make([]float64, len(children))
 	maxHeight := 0.0
 	hasOverflow := false
 
@@ -368,30 +375,17 @@ func (bl *BlockLayout) layoutHorizontal(node document.DocumentNode, constraints 
 		if child == nil {
 			continue
 		}
-
 		childConstraints := Constraints{
 			AvailableWidth:  childWidths[i],
 			AvailableHeight: childAvailHeight,
 			FontResolver:    constraints.FontResolver,
 		}
-
 		childResult := bl.layoutChild(child, childConstraints)
 		childResults[i] = childResult
+		childHeights[i] = childResult.Bounds.Height
 		if childResult.Overflow != nil {
 			hasOverflow = true
 		}
-
-		placed = append(placed, PlacedNode{
-			Node: child,
-			Position: document.Point{
-				X: contentX + cursorX,
-				Y: contentY,
-			},
-			Size:     document.Size{Width: childWidths[i], Height: childResult.Bounds.Height},
-			Children: childResult.Children,
-		})
-
-		cursorX += childWidths[i]
 		if childResult.Bounds.Height > maxHeight {
 			maxHeight = childResult.Bounds.Height
 		}
@@ -403,9 +397,38 @@ func (bl *BlockLayout) layoutHorizontal(node document.DocumentNode, constraints 
 		finalContentHeight = fixedContentHeight
 	}
 
-	// Stretch all children (columns) and their direct children (e.g. text
-	// nodes) to match the final row height so that backgrounds fill the cell.
-	stretchPlacedNodes(placed, finalContentHeight)
+	// Compute justify offsets along the main axis.
+	leadingSpace, interSpace := computeJustifyOffsets(style.Justify, children, childWidths, gapValue, contentWidth)
+
+	// Place children with gap, justify, and align-items.
+	placed := make([]PlacedNode, 0, len(children))
+	cursorX := leadingSpace
+	for i, child := range children {
+		if child == nil {
+			continue
+		}
+
+		yOffset := computeAlignItemsOffset(style.AlignItems, childHeights[i], finalContentHeight)
+
+		placed = append(placed, PlacedNode{
+			Node: child,
+			Position: document.Point{
+				X: contentX + cursorX,
+				Y: contentY + yOffset,
+			},
+			Size:     document.Size{Width: childWidths[i], Height: childHeights[i]},
+			Children: childResults[i].Children,
+		})
+
+		cursorX += childWidths[i] + gapValue + interSpace
+	}
+
+	// Stretch children when AlignItems is Stretch (the zero-value default)
+	// so that backgrounds fill the full row height, preserving backward
+	// compatibility.
+	if style.AlignItems == document.AlignItemsStretch {
+		stretchPlacedNodes(placed, finalContentHeight)
+	}
 
 	totalHeight := margin.Top + borderWidths.Top + padding.Top + finalContentHeight + padding.Bottom + borderWidths.Bottom + margin.Bottom
 
@@ -420,6 +443,68 @@ func (bl *BlockLayout) layoutHorizontal(node document.DocumentNode, constraints 
 		},
 		Children: placed,
 		Overflow: overflow,
+	}
+}
+
+// computeJustifyOffsets returns the leading space (before the first child)
+// and the inter-child space (added between each pair of children, on top of
+// the gap) based on the JustifyContent mode.
+func computeJustifyOffsets(justify document.JustifyContent, children []document.DocumentNode, childWidths []float64, gapValue, contentWidth float64) (leading, inter float64) {
+	n := 0
+	totalItemWidth := 0.0
+	for i, child := range children {
+		if child == nil {
+			continue
+		}
+		n++
+		totalItemWidth += childWidths[i]
+	}
+	if n == 0 {
+		return 0, 0
+	}
+
+	totalGap := gapValue * float64(n-1)
+	freeSpace := contentWidth - totalItemWidth - totalGap
+	if freeSpace < 0 {
+		freeSpace = 0
+	}
+
+	switch justify {
+	case document.JustifyCenter:
+		return freeSpace / 2, 0
+	case document.JustifyEnd:
+		return freeSpace, 0
+	case document.JustifyBetween:
+		if n > 1 {
+			return 0, freeSpace / float64(n-1)
+		}
+		return 0, 0
+	case document.JustifyEvenly:
+		space := freeSpace / float64(n+1)
+		return space, space
+	default: // JustifyStart
+		return 0, 0
+	}
+}
+
+// computeAlignItemsOffset returns the vertical offset for a child within the
+// row based on the AlignItems mode and the child's natural height.
+func computeAlignItemsOffset(align document.AlignItems, childHeight, rowHeight float64) float64 {
+	switch align {
+	case document.AlignItemsStart:
+		return 0
+	case document.AlignItemsCenter:
+		if childHeight >= rowHeight {
+			return 0
+		}
+		return (rowHeight - childHeight) / 2
+	case document.AlignItemsEnd:
+		if childHeight >= rowHeight {
+			return 0
+		}
+		return rowHeight - childHeight
+	default: // AlignItemsStretch or zero value
+		return 0
 	}
 }
 
@@ -456,14 +541,20 @@ func buildHorizontalOverflow(children []document.DocumentNode, childResults []Re
 	}
 }
 
-// resolveChildWidths determines the width of each child node for
-// horizontal layout. Children with an explicit BoxStyle.Width are
-// resolved against parentWidth. The remaining space is divided equally
-// among children without an explicit width.
-func resolveChildWidths(children []document.DocumentNode, parentWidth, fontSize float64) []float64 {
+// resolveFlexChildWidths determines the width of each child node for
+// horizontal (flex) layout. The algorithm:
+//  1. Children with an explicit BoxStyle.Width are resolved against parentWidth.
+//  2. If any children have FlexGrow > 0, leftover space (parentWidth minus
+//     explicit widths minus total gap) is distributed proportionally to
+//     FlexGrow values.
+//  3. If no children have FlexGrow, leftover space is divided equally among
+//     auto-width children (preserving the original behavior).
+func resolveFlexChildWidths(children []document.DocumentNode, parentWidth, gapValue, fontSize float64) []float64 {
 	widths := make([]float64, len(children))
 	usedWidth := 0.0
 	autoCount := 0
+	totalGrow := 0
+	growIndices := []int{}
 
 	for i, child := range children {
 		if child == nil {
@@ -475,13 +566,35 @@ func resolveChildWidths(children []document.DocumentNode, parentWidth, fontSize 
 		} else {
 			autoCount++
 		}
+
+		// Read FlexGrow from the child's style (works for any node type).
+		grow := child.Style().FlexGrow
+		if grow > 0 {
+			totalGrow += grow
+			growIndices = append(growIndices, i)
+		}
 	}
 
-	if autoCount > 0 {
-		remaining := parentWidth - usedWidth
-		if remaining < 0 {
-			remaining = 0
+	n := 0
+	for _, child := range children {
+		if child != nil {
+			n++
 		}
+	}
+	totalGap := gapValue * float64(n-1)
+	remaining := parentWidth - usedWidth - totalGap
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	if totalGrow > 0 {
+		// Distribute remaining space proportionally to FlexGrow values.
+		for _, idx := range growIndices {
+			grow := children[idx].Style().FlexGrow
+			widths[idx] += remaining * float64(grow) / float64(totalGrow)
+		}
+	} else if autoCount > 0 {
+		// No flex-grow: distribute remaining equally among auto-width children.
 		autoWidth := remaining / float64(autoCount)
 		for i := range widths {
 			if widths[i] == 0 && children[i] != nil {
@@ -491,6 +604,12 @@ func resolveChildWidths(children []document.DocumentNode, parentWidth, fontSize 
 	}
 
 	return widths
+}
+
+// resolveChildWidths is a backward-compatible wrapper around
+// resolveFlexChildWidths with zero gap.
+func resolveChildWidths(children []document.DocumentNode, parentWidth, fontSize float64) []float64 {
+	return resolveFlexChildWidths(children, parentWidth, 0, fontSize)
 }
 
 // layoutChild dispatches layout for a single child node.

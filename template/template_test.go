@@ -2036,3 +2036,243 @@ func TestRowBuildSetsBreakInsideAvoid(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Unified style system tests (StyleOption, Class, FlexBox, FlexRow, FlexCol)
+// ---------------------------------------------------------------------------
+
+func TestClass_CombinesOptions(t *testing.T) {
+	style := document.DefaultStyle()
+	opt := Class(
+		FontSize(16),
+		Bold(),
+		TextColor(pdf.RGB(0.5, 0.5, 0.5)),
+	)
+	opt(&style)
+	if style.FontSize != 16 {
+		t.Errorf("FontSize = %v, want 16", style.FontSize)
+	}
+	if style.FontWeight != document.WeightBold {
+		t.Errorf("FontWeight = %v, want Bold", style.FontWeight)
+	}
+}
+
+func TestClass_LaterOptionOverrides(t *testing.T) {
+	style := document.DefaultStyle()
+	opt := Class(
+		FontSize(16),
+		FontSize(20), // should override
+	)
+	opt(&style)
+	if style.FontSize != 20 {
+		t.Errorf("FontSize = %v, want 20 (last wins)", style.FontSize)
+	}
+}
+
+func TestClass_NilOptionIgnored(t *testing.T) {
+	style := document.DefaultStyle()
+	opt := Class(nil, FontSize(14), nil)
+	opt(&style)
+	if style.FontSize != 14 {
+		t.Errorf("FontSize = %v, want 14", style.FontSize)
+	}
+}
+
+func TestFlexRow_SetsDirection(t *testing.T) {
+	cb := &ColBuilder{doc: New()}
+	cb.FlexRow(func(c *ColBuilder) {
+		c.Text("A")
+	})
+	box, ok := cb.nodes[0].(*document.Box)
+	if !ok {
+		t.Fatalf("expected *document.Box, got %T", cb.nodes[0])
+	}
+	if box.BoxStyle.Direction != document.DirectionHorizontal {
+		t.Errorf("Direction = %v, want Horizontal", box.BoxStyle.Direction)
+	}
+}
+
+func TestFlexCol_SetsDirection(t *testing.T) {
+	cb := &ColBuilder{doc: New()}
+	cb.FlexCol(func(c *ColBuilder) {
+		c.Text("A")
+	})
+	box, ok := cb.nodes[0].(*document.Box)
+	if !ok {
+		t.Fatalf("expected *document.Box, got %T", cb.nodes[0])
+	}
+	if box.BoxStyle.Direction != document.DirectionVertical {
+		t.Errorf("Direction = %v, want Vertical", box.BoxStyle.Direction)
+	}
+}
+
+func TestFlexBox_AppliesStyleOptions(t *testing.T) {
+	cb := &ColBuilder{doc: New()}
+	bg := pdf.RGB(0.9, 0.9, 0.9)
+	cb.FlexBox(func(c *ColBuilder) {
+		c.Text("A")
+	},
+		FlexRow(),
+		Justify(document.JustifyCenter),
+		AlignItems(document.AlignItemsCenter),
+		Gap(document.Mm(4)),
+		Padding(document.UniformEdges(document.Mm(8))),
+		BgColor(bg),
+		FlexGrow(2),
+	)
+	box, ok := cb.nodes[0].(*document.Box)
+	if !ok {
+		t.Fatalf("expected *document.Box, got %T", cb.nodes[0])
+	}
+	if box.BoxStyle.Direction != document.DirectionHorizontal {
+		t.Errorf("Direction = %v, want Horizontal", box.BoxStyle.Direction)
+	}
+	if box.BoxStyle.Justify != document.JustifyCenter {
+		t.Errorf("Justify = %v, want Center", box.BoxStyle.Justify)
+	}
+	if box.BoxStyle.AlignItems != document.AlignItemsCenter {
+		t.Errorf("AlignItems = %v, want Center", box.BoxStyle.AlignItems)
+	}
+	if box.BoxStyle.Gap != document.Mm(4) {
+		t.Errorf("Gap = %v, want 4mm", box.BoxStyle.Gap)
+	}
+	if box.BoxStyle.Padding != document.UniformEdges(document.Mm(8)) {
+		t.Errorf("Padding = %v, want 8mm uniform", box.BoxStyle.Padding)
+	}
+	if box.BoxStyle.FlexGrow != 2 {
+		t.Errorf("FlexGrow = %v, want 2", box.BoxStyle.FlexGrow)
+	}
+	if box.BoxStyle.Background == nil || *box.BoxStyle.Background != bg {
+		t.Errorf("Background = %v, want %v", box.BoxStyle.Background, bg)
+	}
+}
+
+func TestFlexBox_ClassReusable(t *testing.T) {
+	cardStyle := Class(
+		FlexRow(),
+		Justify(document.JustifyBetween),
+		AlignItems(document.AlignItemsCenter),
+		Padding(document.UniformEdges(document.Mm(4))),
+	)
+
+	cb := &ColBuilder{doc: New()}
+	cb.FlexBox(func(c *ColBuilder) {
+		c.Text("Left")
+	}, cardStyle)
+	cb.FlexBox(func(c *ColBuilder) {
+		c.Text("Right")
+	}, cardStyle)
+
+	box1, ok := cb.nodes[0].(*document.Box)
+	if !ok {
+		t.Fatalf("node 0: expected *document.Box, got %T", cb.nodes[0])
+	}
+	box2, ok := cb.nodes[1].(*document.Box)
+	if !ok {
+		t.Fatalf("node 1: expected *document.Box, got %T", cb.nodes[1])
+	}
+
+	for i, box := range []*document.Box{box1, box2} {
+		if box.BoxStyle.Justify != document.JustifyBetween {
+			t.Errorf("box[%d] Justify = %v, want Between", i, box.BoxStyle.Justify)
+		}
+		if box.BoxStyle.AlignItems != document.AlignItemsCenter {
+			t.Errorf("box[%d] AlignItems = %v, want Center", i, box.BoxStyle.AlignItems)
+		}
+		if box.BoxStyle.Direction != document.DirectionHorizontal {
+			t.Errorf("box[%d] Direction = %v, want Horizontal", i, box.BoxStyle.Direction)
+		}
+	}
+}
+
+func TestWithStyle_AdapterForBox(t *testing.T) {
+	cb := &ColBuilder{doc: New()}
+	bg := pdf.Gray(0.95)
+	cb.Box(func(c *ColBuilder) {
+		c.Text("test")
+	},
+		WithStyle(
+			BgColor(bg),
+			Padding(document.UniformEdges(document.Mm(4))),
+			Margin(document.UniformEdges(document.Mm(2))),
+		),
+	)
+	box, ok := cb.nodes[0].(*document.Box)
+	if !ok {
+		t.Fatalf("expected *document.Box, got %T", cb.nodes[0])
+	}
+	if box.BoxStyle.Background == nil || *box.BoxStyle.Background != bg {
+		t.Errorf("Background = %v, want %v", box.BoxStyle.Background, bg)
+	}
+	if box.BoxStyle.Padding != document.UniformEdges(document.Mm(4)) {
+		t.Errorf("Padding = %v, want 4mm uniform", box.BoxStyle.Padding)
+	}
+	if box.BoxStyle.Margin != document.UniformEdges(document.Mm(2)) {
+		t.Errorf("Margin = %v, want 2mm uniform", box.BoxStyle.Margin)
+	}
+}
+
+func TestStyleOption_AliasWorksAsTextOption(t *testing.T) {
+	cb := &ColBuilder{doc: New()}
+	styleOpt := Class(FontSize(18), Bold())
+	cb.Text("Hello", styleOpt)
+
+	txt, ok := cb.nodes[0].(*document.Text)
+	if !ok {
+		t.Fatalf("expected *document.Text, got %T", cb.nodes[0])
+	}
+	if txt.TextStyle.FontSize != 18 {
+		t.Errorf("FontSize = %v, want 18", txt.TextStyle.FontSize)
+	}
+	if txt.TextStyle.FontWeight != document.WeightBold {
+		t.Errorf("FontWeight = %v, want Bold", txt.TextStyle.FontWeight)
+	}
+}
+
+func TestFlexGrow_StyleOption(t *testing.T) {
+	style := document.DefaultStyle()
+	FlexGrow(3)(&style)
+	if style.FlexGrow != 3 {
+		t.Errorf("FlexGrow = %v, want 3", style.FlexGrow)
+	}
+}
+
+func TestJustify_StyleOption(t *testing.T) {
+	style := document.DefaultStyle()
+	Justify(document.JustifyBetween)(&style)
+	if style.Justify != document.JustifyBetween {
+		t.Errorf("Justify = %v, want Between", style.Justify)
+	}
+}
+
+func TestAlignItems_StyleOption(t *testing.T) {
+	style := document.DefaultStyle()
+	AlignItems(document.AlignItemsEnd)(&style)
+	if style.AlignItems != document.AlignItemsEnd {
+		t.Errorf("AlignItems = %v, want End", style.AlignItems)
+	}
+}
+
+func TestGap_StyleOption(t *testing.T) {
+	style := document.DefaultStyle()
+	Gap(document.Mm(5))(&style)
+	if style.Gap != document.Mm(5) {
+		t.Errorf("Gap = %v, want 5mm", style.Gap)
+	}
+}
+
+func TestFlexRow_StyleOption(t *testing.T) {
+	style := document.DefaultStyle()
+	FlexRow()(&style)
+	if style.Direction != document.DirectionHorizontal {
+		t.Errorf("Direction = %v, want Horizontal", style.Direction)
+	}
+}
+
+func TestFlexCol_StyleOption(t *testing.T) {
+	style := document.DefaultStyle()
+	FlexCol()(&style)
+	if style.Direction != document.DirectionVertical {
+		t.Errorf("Direction = %v, want Vertical", style.Direction)
+	}
+}
